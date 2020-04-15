@@ -1,0 +1,17 @@
+package com.augus.mediarecorddeepsearch.lib
+
+class MediaRecordConstants {
+    companion object{
+        val MEDIA_RECORD_STATUS_INITIAL = "INITIAL"
+        val MEDIA_RECORD_STATUS_INITIALIZED = "INITIALIZED"
+        val MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED = "DATA_SOURCE_CONFIGURED"
+        val MEDIA_RECORD_STATUS_PREPAR = "PREPARE"
+        var MEDIA_RECORD_STATUS_START = "START"
+        var MEDIA_RECORD_STATUS_RELEASE = "RELEASE"
+        var MEDIA_RECORD_STATUS_RESET = "RESET"
+        var MEDIA_RECORD_STATUS_RESUME = "RESUME"
+        var MEDIA_RECORD_STATUS_PAUSE = "PAUSE"
+        var MEDIA_RECORD_STATUS_STOP = "STOP"
+        var MEDIA_RECORD_STATUS_FAIL = "FAIL"
+    }
+}
