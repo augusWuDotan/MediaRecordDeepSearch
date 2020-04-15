@@ -1,7 +1,12 @@
 package com.augus.mediarecorddeepsearch.lib
 
 import android.media.MediaRecorder
+import android.os.Environment
+import android.util.Log
 import java.io.File
+import java.io.IOException
+import java.lang.Exception
+
 
 class MediaRecordManager {
     companion object {
@@ -68,7 +73,12 @@ class MediaRecordManager {
     /**
      * 檔案名
      */
-    private var recordFileName: String = "test.4ma"
+    private var recordFileName: String = ""
+
+    /**
+     * 檔案路徑
+     */
+    private var recordFilePath: String = ""
 
     /**
      * 檔案
@@ -120,9 +130,32 @@ class MediaRecordManager {
         return instance
     }
 
+    //設定 檔名
+    fun setRecordFileName(name: String, path: String): MediaRecordManager {
+        recordFileName = name
+        recordFilePath = path
+        return instance
+    }
+
 
     //建立錄製音頻實體 [初始化]
     fun createMediaRecord(): MediaRecordManager {
+        val child: File = File(Environment.getDataDirectory().absolutePath + "/" + recordFileName)
+        val directory: File = child.parentFile
+        if (!directory.exists() && !directory.mkdirs()) {
+            throw IOException("Path to file could not be created.")
+        }
+
+//        //檔案
+//        var file: File = File(Environment.getDataDirectory().absolutePath, recordFileName)
+//        Log.d("createMediaRecord", "absolutePath: ${file.path}")
+//        /**
+//         * 檔案是否存在
+//         */
+//        if (!file.exists()) {
+//            Log.d("test","create success : ${file.createNewFile()}")
+//        }
+
         recorder = MediaRecorder()
         recorder!!.setAudioChannels(defaultAudioChannels)
         recorder!!.setAudioSource(defaultAudioSource)
@@ -131,14 +164,65 @@ class MediaRecordManager {
         recorder!!.setAudioEncoder(defaultAudioEncoder)
         recorder!!.setAudioEncodingBitRate(defaultAudioEncodingBitRate)
         recorder!!.setAudioSamplingRate(defaultAudioSamplingRate)
+        recorder!!.setOnErrorListener(null);
+        recorder!!.setOnInfoListener(null);
+        recorder!!.setPreviewDisplay(null);
+        //輸出檔名
+        recorder!!.setOutputFile(recordFilePath + "/" + recordFileName)
         recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED
         return instance
     }
 
     //準備
-    fun prepareMediaRecord() {
-        if (recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED) recorder?.prepare()
+    fun prepareRecord() {
+        if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED) {
+            return
+        }
+        recorder?.prepare()
+        recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR
     }
 
+    fun startRecord() {
+        if (recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
+            return
+        }
+        recorder?.start()
+        recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_START
+    }
 
+    fun stopRecord() {
+        if (recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
+            return
+        }
+        try{
+            recorder?.stop()
+            recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_STOP
+            recorder?.reset()
+            recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_INITIAL
+        } catch (e:IllegalStateException ) {
+            e.printStackTrace()
+            Log.d("stopRecord","${e.message}")
+        } catch (e: RuntimeException ) {
+            e.printStackTrace()
+            Log.d("stopRecord","${e.message}")
+        } catch (e: Exception ) {
+            e.printStackTrace()
+            Log.d("stopRecord","${e.message}")
+        }
+    }
+
+    //繼續下一個動作
+    fun continueToTheNextAction() {
+        when (recordStatus) {
+            MediaRecordConstants.MEDIA_RECORD_STATUS_INITIAL -> createMediaRecord()
+            MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED -> prepareRecord()
+            MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR -> startRecord()
+            MediaRecordConstants.MEDIA_RECORD_STATUS_START -> stopRecord()
+        }
+    }
+
+    //取得狀態
+    fun getStatus(): String {
+        return recordStatus
+    }
 }
