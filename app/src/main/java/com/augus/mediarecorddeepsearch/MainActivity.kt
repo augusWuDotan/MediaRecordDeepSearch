@@ -3,15 +3,15 @@ package com.augus.mediarecorddeepsearch
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.os.Environment
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
+import com.augus.mediarecorddeepsearch.lib.MediaRecordConstants
 import com.augus.mediarecorddeepsearch.lib.MediaRecordManager
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 
 class MainActivity : AppCompatActivity() {
 
@@ -26,25 +26,12 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
         )
-    private var permissionToRecordAccepted = false
     private var filePath: String = ""
     private var fileName: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        // .append(getString(R.string.app_name)) .append("/")
-        filePath = StringBuffer()
-            .append(this.getExternalFilesDir(Environment.DIRECTORY_MUSIC)!!.path)
-            .toString()
-        fileName = "RecordName_${(Math.random() * 100).toInt()}_dd.m4a"
-        Log.d(this.packageName, "filePath:${filePath} fileName:${fileName} ")
-        var file = File(filePath,fileName)
-        if(!file.exists()){
-            Log.d(this.packageName, "file exists :${file.exists()}")
-            Log.d(this.packageName, "file parentFile isDirectory :${file.parentFile.isDirectory}")
-            Log.d(this.packageName, "file createNewFile :${file.createNewFile()}")
-        }
 
         if (ActivityCompat.checkSelfPermission(
                 this,
@@ -65,19 +52,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun onCaptureClick(view: View?) {
+        Log.d(this.packageName, "getStatus: ${MediaRecordManager.instance.getStatus()}")
+        if (MediaRecordManager.instance.getStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
+            MediaRecordManager.instance.startRecord()
+        } else if (MediaRecordManager.instance.getStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
+            MediaRecordManager.instance.stopRecord()
+        }else{
+
+        }
+    }
+
     fun test() {
         MediaRecordManager.instance
-            .setRecordFileName(fileName, filePath)
+            .setRecordFileName(this)
             .createMediaRecord()
             .prepareRecord()
-
-        GlobalScope.launch {
-            MediaRecordManager.instance.startRecord()
-            delay(2000L)
-            runOnUiThread {
-                MediaRecordManager.instance.stopRecord()
-            }
-        }
     }
 
     override fun onRequestPermissionsResult(

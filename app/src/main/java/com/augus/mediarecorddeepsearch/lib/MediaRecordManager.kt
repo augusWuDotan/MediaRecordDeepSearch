@@ -1,11 +1,11 @@
 package com.augus.mediarecorddeepsearch.lib
 
+import android.content.Context
 import android.media.MediaRecorder
-import android.os.Environment
+import android.os.AsyncTask
 import android.util.Log
 import java.io.File
 import java.io.IOException
-import java.lang.Exception
 
 
 class MediaRecordManager {
@@ -131,31 +131,14 @@ class MediaRecordManager {
     }
 
     //設定 檔名
-    fun setRecordFileName(name: String, path: String): MediaRecordManager {
-        recordFileName = name
-        recordFilePath = path
+    fun setRecordFileName(context: Context): MediaRecordManager {
+        recordFile = MediaHelper(context).getOutputMediaFile(MediaHelper.MEDIA_TYPE_MUSIC)
         return instance
     }
 
 
     //建立錄製音頻實體 [初始化]
     fun createMediaRecord(): MediaRecordManager {
-        val child: File = File(Environment.getDataDirectory().absolutePath + "/" + recordFileName)
-        val directory: File = child.parentFile
-        if (!directory.exists() && !directory.mkdirs()) {
-            throw IOException("Path to file could not be created.")
-        }
-
-//        //檔案
-//        var file: File = File(Environment.getDataDirectory().absolutePath, recordFileName)
-//        Log.d("createMediaRecord", "absolutePath: ${file.path}")
-//        /**
-//         * 檔案是否存在
-//         */
-//        if (!file.exists()) {
-//            Log.d("test","create success : ${file.createNewFile()}")
-//        }
-
         recorder = MediaRecorder()
         recorder!!.setAudioChannels(defaultAudioChannels)
         recorder!!.setAudioSource(defaultAudioSource)
@@ -164,11 +147,9 @@ class MediaRecordManager {
         recorder!!.setAudioEncoder(defaultAudioEncoder)
         recorder!!.setAudioEncodingBitRate(defaultAudioEncodingBitRate)
         recorder!!.setAudioSamplingRate(defaultAudioSamplingRate)
-        recorder!!.setOnErrorListener(null);
-        recorder!!.setOnInfoListener(null);
-        recorder!!.setPreviewDisplay(null);
         //輸出檔名
-        recorder!!.setOutputFile(recordFilePath + "/" + recordFileName)
+        Log.d("recordFile", "path: ${recordFile?.path}")
+        recorder!!.setOutputFile(recordFile?.path)
         recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED
         return instance
     }
@@ -178,12 +159,32 @@ class MediaRecordManager {
         if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED) {
             return
         }
-        recorder?.prepare()
+        try{
+            recorder?.prepare()
+        }catch (e:IllegalStateException){
+            Log.d(
+                "prepareRecord",
+                "IllegalStateException preparing MediaRecorder: " + e.message
+            )
+            recorder?.reset()
+            recorder?.release()
+            recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_RELEASE
+        }catch (e: IOException){
+            Log.d(
+                "prepareRecord",
+                "IOException preparing MediaRecorder: " + e.message
+            )
+            recorder?.reset()
+            recorder?.release()
+            recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_RELEASE
+        }
         recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR
     }
 
     fun startRecord() {
-        if (recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
+        Log.d("MediaRecordManager","startRecord")
+//        MediaPrepareTask().execute(null,null,null)
+        if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
             return
         }
         recorder?.start()
@@ -191,23 +192,25 @@ class MediaRecordManager {
     }
 
     fun stopRecord() {
-        if (recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
+        Log.d("MediaRecordManager","stopRecord")
+        if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
             return
         }
-        try{
+        try {
             recorder?.stop()
             recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_STOP
             recorder?.reset()
             recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_INITIAL
-        } catch (e:IllegalStateException ) {
+            Log.d("stopRecord", "length:${recordFile?.length()}")
+        } catch (e: IllegalStateException) {
             e.printStackTrace()
-            Log.d("stopRecord","${e.message}")
-        } catch (e: RuntimeException ) {
+            Log.d("stopRecord", "${e.message}")
+        } catch (e: RuntimeException) {
             e.printStackTrace()
-            Log.d("stopRecord","${e.message}")
-        } catch (e: Exception ) {
+            Log.d("stopRecord", "${e.message}")
+        } catch (e: Exception) {
             e.printStackTrace()
-            Log.d("stopRecord","${e.message}")
+            Log.d("stopRecord", "${e.message}")
         }
     }
 
@@ -224,5 +227,28 @@ class MediaRecordManager {
     //取得狀態
     fun getStatus(): String {
         return recordStatus
+    }
+
+    /**
+     * Asynchronous task for preparing the [android.media.MediaRecorder] since it's a long blocking
+     * operation.
+     */
+    internal class MediaPrepareTask : AsyncTask<Void?, Void?, Boolean>() {
+        override fun doInBackground(vararg params: Void?): Boolean {
+            // initialize video camera
+            if (instance.recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
+                return false
+            }
+            instance.recorder?.start()
+            instance.recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_START
+            return true
+        }
+
+        override fun onPostExecute(result: Boolean) {
+            Log.d("MediaPrepareTask", "result: $result")
+            if (!result) {
+
+            }
+        }
     }
 }
