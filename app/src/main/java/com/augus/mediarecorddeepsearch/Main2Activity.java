@@ -18,6 +18,9 @@ import com.augus.mediarecorddeepsearch.lib.media_third.CameraHelper;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public class Main2Activity extends AppCompatActivity {
 
@@ -29,6 +32,8 @@ public class Main2Activity extends AppCompatActivity {
     private static final String TAG = "Recorder";
     private Button captureButton;
 
+
+
     private final String[] requiredPermissions = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.RECORD_AUDIO,
@@ -39,7 +44,7 @@ public class Main2Activity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main2);
-
+        Log.d("voice","ratio:");
         captureButton = (Button) findViewById(R.id.button_capture);
     }
 
@@ -259,7 +264,6 @@ public class Main2Activity extends AppCompatActivity {
                 // Camera is available and unlocked, MediaRecorder is prepared,
                 // now you can start recording
                 mMediaRecorder.start();
-
                 isRecording = true;
             } else {
                 // prepare didn't work, release the camera

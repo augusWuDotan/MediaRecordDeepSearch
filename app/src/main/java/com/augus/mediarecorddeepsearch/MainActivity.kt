@@ -9,9 +9,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.augus.mediarecorddeepsearch.lib.MediaRecordConstants
 import com.augus.mediarecorddeepsearch.lib.MediaRecordManager
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 class MainActivity : AppCompatActivity() {
 
@@ -29,10 +28,11 @@ class MainActivity : AppCompatActivity() {
     private var filePath: String = ""
     private var fileName: String = ""
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+//        executor.scheduleAtFixedRate(mRunnable, 0, 100, TimeUnit.MILLISECONDS)
         if (ActivityCompat.checkSelfPermission(
                 this,
                 Manifest.permission.RECORD_AUDIO

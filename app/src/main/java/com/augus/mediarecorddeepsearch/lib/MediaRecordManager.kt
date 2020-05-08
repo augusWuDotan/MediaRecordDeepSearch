@@ -6,6 +6,10 @@ import android.os.AsyncTask
 import android.util.Log
 import java.io.File
 import java.io.IOException
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
+import kotlin.math.log10
 
 
 class MediaRecordManager {
@@ -26,7 +30,7 @@ class MediaRecordManager {
     private var listener: MediaRecordListener? = null
 
     //狀態
-    private var recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_INITIAL
+    var recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_INITIAL
 
     /**
      * 聲道
@@ -85,6 +89,22 @@ class MediaRecordManager {
      */
     private var recordFile: File? = null
 
+    //線程池
+    private val pool: ScheduledExecutorService? = Executors.newScheduledThreadPool(1)
+
+    internal class EchoServer : Runnable {
+        override fun run() {
+            try {
+                if (instance.recordStatus == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
+                    var ratio: Double = instance.recorder?.maxAmplitude!!.toDouble()
+                    if (ratio > 1) ratio = 20 * log10(ratio)
+                    Log.d("voice", "ratio:$ratio")
+                }
+            } catch (e: InterruptedException) {
+                e.printStackTrace()
+            }
+        }
+    }
 
     //設定 聲道
     fun setAudioChannels(AudioChannels: Int): MediaRecordManager {
@@ -159,9 +179,9 @@ class MediaRecordManager {
         if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_DATA_SOURCE_CONFIGURED) {
             return
         }
-        try{
+        try {
             recorder?.prepare()
-        }catch (e:IllegalStateException){
+        } catch (e: IllegalStateException) {
             Log.d(
                 "prepareRecord",
                 "IllegalStateException preparing MediaRecorder: " + e.message
@@ -169,7 +189,7 @@ class MediaRecordManager {
             recorder?.reset()
             recorder?.release()
             recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_RELEASE
-        }catch (e: IOException){
+        } catch (e: IOException) {
             Log.d(
                 "prepareRecord",
                 "IOException preparing MediaRecorder: " + e.message
@@ -182,22 +202,23 @@ class MediaRecordManager {
     }
 
     fun startRecord() {
-        Log.d("MediaRecordManager","startRecord")
+        Log.d("MediaRecordManager", "startRecord")
 //        MediaPrepareTask().execute(null,null,null)
         if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
             return
         }
         recorder?.start()
-
+        pool?.scheduleWithFixedDelay(EchoServer(),0,100,TimeUnit.MILLISECONDS)
         recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_START
     }
 
     fun stopRecord() {
-        Log.d("MediaRecordManager","stopRecord")
+        Log.d("MediaRecordManager", "stopRecord")
         if (recordStatus != MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
             return
         }
         try {
+            pool?.shutdown()
             recorder?.stop()
             recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_STOP
             recorder?.reset()
