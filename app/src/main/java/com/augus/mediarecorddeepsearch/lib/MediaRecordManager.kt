@@ -188,6 +188,7 @@ class MediaRecordManager {
             return
         }
         recorder?.start()
+
         recordStatus = MediaRecordConstants.MEDIA_RECORD_STATUS_START
     }
 
