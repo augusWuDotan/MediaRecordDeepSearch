@@ -2,6 +2,8 @@ package com.augus.mediarecorddeepsearch
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaPlayer
+import android.media.MediaRecorder
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -9,8 +11,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import com.augus.mediarecorddeepsearch.lib.MediaRecordConstants
 import com.augus.mediarecorddeepsearch.lib.MediaRecordManager
-import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
+import java.io.File
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +30,8 @@ class MainActivity : AppCompatActivity() {
     private var filePath: String = ""
     private var fileName: String = ""
 
+    //
+    private var mMediaPlayer: MediaPlayer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,21 +57,92 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun onCaptureClick(view: View?) {
-        Log.d(this.packageName, "getStatus: ${MediaRecordManager.instance.getStatus()}")
-        if (MediaRecordManager.instance.getStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
+        mMediaPlayer?.reset()
+        Log.d(this.packageName, "getStatus: ${MediaRecordManager.instance.getRecordStatus()}")
+        if (MediaRecordManager.instance.getRecordStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_PREPAR) {
             MediaRecordManager.instance.startRecord()
-        } else if (MediaRecordManager.instance.getStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
+        } else if (MediaRecordManager.instance.getRecordStatus() == MediaRecordConstants.MEDIA_RECORD_STATUS_START) {
             MediaRecordManager.instance.stopRecord()
-        }else{
-
+        } else {
+            MediaRecordManager.instance.recycleRecorderFile()
         }
     }
 
     fun test() {
+        mMediaPlayer = MediaPlayer()
+        mMediaPlayer?.setOnPreparedListener {
+//            it.start()
+        }
+        mMediaPlayer?.setOnErrorListener { mp, what, extra ->
+            Log.d("tOnErrorListener", "what:$what,extra:$extra")
+            mp.reset()
+            true
+        }
+        //非必要
+        //.setAudioChannels(2)
+        //.setAudioSource(MediaRecorder.AudioSource.MIC)
+        //.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        //.setAudioEncoder(MediaRec
+        // order.AudioEncoder.AAC)
+        //.setAudioEncodingBitRate(96000)
+        //.setAudioSamplingRate(44100)
+
+        //第一次
         MediaRecordManager.instance
-            .setRecordFileName(this)
-            .createMediaRecord()
+            .setRecorderListener(mMediaRecordListener)
+            .setAudioChannels(2)
+            .setAudioSource(MediaRecorder.AudioSource.MIC)
+            .setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            .setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            .setAudioEncodingBitRate(96000)
+            .setAudioSamplingRate(44100)
+            .createMediaRecord(this)
             .prepareRecord()
+
+        //後續
+//        MediaRecordManager.instance
+//            .createMediaRecord(this)
+//            .prepareRecord()
+//            .startRecord()
+    }
+
+    private var mMediaRecordListener = object : MediaRecordManager.MediaRecordListener {
+
+        override fun prepareSucess() {
+            Log.d("mMediaRecordListener", "prepareSucess")
+        }
+
+        override fun recordStart() {
+            Log.d("mMediaRecordListener", "recordStart")
+        }
+
+        override fun showDecibel(decibelPercentage: Float) {
+            Log.d("mMediaRecordListener", "showDecibel decibelPercentage:$decibelPercentage")
+        }
+
+        override fun recordSuccess(file: File?) {
+            Log.d("mMediaRecordListener", "recordSuccess file:${file?.length()}")
+            if (file != null) {
+                mMediaPlayer?.setDataSource(file.path)
+                mMediaPlayer?.prepare()
+            }
+        }
+
+        override fun recordStop() {
+            Log.d("mMediaRecordListener", "recordStop")
+        }
+
+        override fun recordError(error: String) {
+            Log.d("mMediaRecordListener", "recordError error:$error")
+        }
+
+        override fun recordRecycleSuccess(isSuccess: Boolean) {
+            Log.d("mMediaRecordListener", "recordRecycleSuccess isSuccess:$isSuccess")
+            MediaRecordManager.instance
+                .createMediaRecord(this@MainActivity)
+                .prepareRecord()
+                .startRecord()
+        }
     }
 
     override fun onRequestPermissionsResult(
